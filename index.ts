@@ -1,23 +1,37 @@
-import Bun from "bun";
+import { Hono } from "hono";
 import { getData } from "./src";
 
-const server = Bun.serve({
-  port: Number(Bun.env.PORT || 3000),
-  fetch: async (req) => {
-    const url = new URL(req.url);
+const app = new Hono();
 
-    try {
-      const username = url.searchParams.get("username");
-      if (!username)
-        return new Response("Username is required", { status: 400 });
+app.get("/", async (c) => {
+  const username = c.req.query("username");
+  if (!username) {
+    return c.text(
+      "Twitter Data Scraper API. Use /:username or /?username=handle to get data."
+    );
+  }
 
-      const data = await getData(username);
-      return Response.json(data);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      return new Response(message, { status: 500 });
-    }
-  },
+  try {
+    const data = await getData(username);
+    return c.json(data);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return c.json({ error: message }, 500);
+  }
 });
-const url = `${server.protocol}://${server.hostname}:${server.port}`;
-console.log(`Server running on ${url}`);
+
+app.get("/:username", async (c) => {
+  const username = c.req.param("username");
+  try {
+    const data = await getData(username);
+    return c.json(data);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return c.json({ error: message }, 500);
+  }
+});
+
+export default {
+  port: Number(process.env.PORT || 3000),
+  fetch: app.fetch,
+};
