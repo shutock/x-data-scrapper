@@ -11,6 +11,7 @@
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^4.7.0",
+    "@types/bun": "^1.3.4",
     "@types/lodash": "^4.17.21",
     "prettier": "^3.7.4"
   },
@@ -18,6 +19,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "bun": "^1.3.4",
     "cheerio": "^1.1.2",
     "hono": "^4.11.1",
     "lodash": "^4.17.21",
