@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
-import puppeteer from "puppeteer";
 import { type Ora } from "ora";
+import puppeteer from "puppeteer";
 
 import { schema } from "./schema";
 
@@ -8,7 +8,7 @@ const baseURL = "https://nitter.net";
 
 export const getData = async (
   username: string,
-  { ora, postsLimit = 100 }: { postsLimit?: number; ora?: Ora }
+  { ora, postsLimit = 100 }: { postsLimit?: number; ora?: Ora },
 ) => {
   let currentUrl = new URL(username, baseURL).toString();
   ora?.start(`Fetching ${currentUrl}`);
@@ -27,7 +27,7 @@ export const getData = async (
         fullVersion: "127.0.0.0",
         model: "",
         wow64: false,
-      }
+      },
     );
     await page.setRequestInterception(true);
     page.on("request", (req) => {
@@ -47,11 +47,11 @@ export const getData = async (
       });
       await page.waitForFunction(
         () => (globalThis as any).document?.body?.children?.length > 0,
-        { timeout: 30000 }
+        { timeout: 30000 },
       );
 
       let html = await page.evaluate(
-        () => (globalThis as any).document?.body?.outerHTML || ""
+        () => (globalThis as any).document?.body?.outerHTML || "",
       );
 
       if (!html || html.trim().length === 0) {
@@ -104,10 +104,10 @@ export const getData = async (
         stats = {
           tweets: num($(".profile-statlist .posts .profile-stat-num").text()),
           following: num(
-            $(".profile-statlist .following .profile-stat-num").text()
+            $(".profile-statlist .following .profile-stat-num").text(),
           ),
           followers: num(
-            $(".profile-statlist .followers .profile-stat-num").text()
+            $(".profile-statlist .followers .profile-stat-num").text(),
           ),
           likes: num($(".profile-statlist .likes .profile-stat-num").text()),
         };

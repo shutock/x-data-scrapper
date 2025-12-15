@@ -1,0 +1,27 @@
+{
+  "plugins": ["@ianvs/prettier-plugin-sort-imports"],
+  "importOrderParserPlugins": [
+    "typescript",
+    "jsx",
+    "explicitResourceManagement"
+  ],
+  "importOrder": [
+    "<TYPES>",
+    "<THIRD_PARTY_MODULES>",
+    "",
+    "<TYPES>^~",
+    "^~/",
+    "",
+    "<TYPES>^[..]",
+    "^[../]",
+    "^[./]",
+    "",
+    "^.*\\.css$"
+  ],
+  "overrides": [
+    {
+      "files": "*.css",
+      "options": { "printWidth": 1000 }
+    }
+  ]
+}

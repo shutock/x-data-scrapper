@@ -38,6 +38,6 @@ export const schema = z.object({
     likes: z.number(),
   }),
   tweets: z.array(
-    generalTweetSchema.extend({ child: generalTweetSchema.optional() })
+    generalTweetSchema.extend({ child: generalTweetSchema.optional() }),
   ),
 });

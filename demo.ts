@@ -1,6 +1,6 @@
-import ora from "ora";
 import { promises as fs } from "fs";
 import path from "path";
+import ora from "ora";
 
 import { getData } from "./src";
 
