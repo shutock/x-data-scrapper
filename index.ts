@@ -1,8 +1,8 @@
 import Bun from "bun";
 import { getData } from "./src";
 
-Bun.serve({
-  port: 3000,
+const server = Bun.serve({
+  port: Number(Bun.env.PORT || 3000),
   fetch: async (req) => {
     const url = new URL(req.url);
 
@@ -19,3 +19,5 @@ Bun.serve({
     }
   },
 });
+const url = `${server.protocol}://${server.hostname}:${server.port}`;
+console.log(`Server running on ${url}`);
