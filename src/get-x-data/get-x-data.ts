@@ -1,6 +1,7 @@
 import * as cheerio from "cheerio";
 import { type Ora } from "ora";
 import { type Browser } from "puppeteer";
+import { z } from "zod";
 
 import { schema } from "./schema";
 import {
@@ -156,6 +157,9 @@ const collectTweetsFromPage = async (
     }
   }
 
+  try {
+    await page.close();
+  } catch {}
   return {
     profile,
     stats,
@@ -166,7 +170,7 @@ const collectTweetsFromPage = async (
 export const getXData = async (
   username: string,
   options: GetDataOptions = {},
-): Promise<any> => {
+): Promise<z.infer<typeof schema>> => {
   const {
     ora,
     postsLimit = 100,

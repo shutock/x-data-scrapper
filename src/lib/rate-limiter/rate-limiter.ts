@@ -48,6 +48,10 @@ export class RateLimiter {
   private config: Required<RateLimiterConfig>;
   private processQueue: () => void;
   private isProcessing = false;
+  private tokens: number = 0;
+  private capacity: number = 0;
+  private refillIntervalMs: number = 1000;
+  private refillTimer: any;
 
   constructor(config: RateLimiterConfig = {}) {
     this.config = {
@@ -66,6 +70,13 @@ export class RateLimiter {
       leading: true,
       trailing: true,
     });
+
+    this.capacity = this.config.requestsPerSecond;
+    this.tokens = this.capacity;
+    this.refillTimer = setInterval(() => {
+      this.tokens = Math.min(this.tokens + this.capacity, this.capacity);
+      this.processQueue();
+    }, this.refillIntervalMs);
   }
 
   async execute<T>(fn: () => Promise<T>, priority: number = 0): Promise<T> {
@@ -102,12 +113,16 @@ export class RateLimiter {
       this.queue.length > 0 &&
       this.activeRequests < this.config.maxConcurrent
     ) {
+      if (this.tokens <= 0) {
+        break;
+      }
       const item = this.queue.shift();
       if (!item) break;
 
       this.metrics.currentQueueSize = this.queue.length;
       this.config.onQueueChange(this.queue.length);
 
+      this.tokens--;
       this.executeItem(item);
     }
 

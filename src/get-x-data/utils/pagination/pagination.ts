@@ -61,6 +61,13 @@ export const shouldStopPagination = (
     return true;
   }
 
+  if (pageInfo.linkHref && !/cursor=/.test(pageInfo.linkHref)) {
+    if (ora) {
+      ora.text = `Pagination stopped: no-cursor-link (${currentCount}/${totalLimit})`;
+    }
+    return true;
+  }
+
   return false;
 };
 

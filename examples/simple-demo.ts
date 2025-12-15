@@ -4,7 +4,7 @@ import ora from "ora";
 
 import { getXData } from "~/src/get-x-data";
 
-const username = "unchase12";
+const username = "spacex";
 const postsLimit = 200;
 const delayBetweenPages = 4000;
 const maxRetries = 3;

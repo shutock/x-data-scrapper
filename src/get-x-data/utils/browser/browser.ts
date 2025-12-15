@@ -39,7 +39,7 @@ export const createPage = async (
 ): Promise<Page> => {
   const {
     userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
-    blockResources = ["image", "font"],
+    blockResources = ["image", "font", "stylesheet", "media", "other"],
   } = config;
 
   const page = await browser.newPage();
@@ -84,8 +84,16 @@ export const navigateToPage = async (
     timeout,
   });
 
-  await page.waitForFunction(
-    () => (globalThis as any).document?.body?.children?.length > 0,
-    { timeout },
+  await Promise.race([
+    page.waitForSelector(".timeline .timeline-item, .profile-card-username", {
+      timeout: Math.min(2000, timeout),
+    }),
+    page.waitForFunction(
+      () => (globalThis as any).document?.body?.children?.length > 0,
+      { timeout },
+    ),
+  ]);
+  await new Promise((resolve) =>
+    setTimeout(resolve, Math.floor(Math.random() * 500) + 200),
   );
 };
