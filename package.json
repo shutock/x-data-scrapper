@@ -1,5 +1,6 @@
 {
-  "name": "twitter-data",
+  "name": "x-data-scrapper",
+  "author": "shutock <yo@shutock.com>",
   "module": "index.ts",
   "type": "module",
   "private": true,
