@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { random } from "lodash";
 import { type Ora } from "ora";
 import puppeteer from "puppeteer";
 
@@ -8,7 +9,17 @@ const baseURL = "https://nitter.net";
 
 export const getData = async (
   username: string,
-  { ora, postsLimit = 100 }: { postsLimit?: number; ora?: Ora },
+  {
+    ora,
+    postsLimit = 100,
+    delayBetweenPages = 2000,
+    maxRetries = 3,
+  }: {
+    postsLimit?: number;
+    ora?: Ora;
+    delayBetweenPages?: number;
+    maxRetries?: number;
+  },
 ) => {
   const url = new URL(username, baseURL).toString();
   ora?.start(`Fetching ${url}`);
@@ -283,9 +294,18 @@ export const getData = async (
         break;
       }
 
+      const randomDelay = random(
+        delayBetweenPages * 0.8,
+        delayBetweenPages * 1.5,
+        false,
+      );
+      if (ora) {
+        ora.text = `Rate limit delay (${Math.round(randomDelay)}ms)... (${allTweets.length}/${postsLimit})`;
+      }
+      await new Promise((resolve) => setTimeout(resolve, randomDelay));
+
       let navigationSuccess = false;
       let retryCount = 0;
-      const maxRetries = 3;
 
       while (!navigationSuccess && retryCount < maxRetries) {
         try {
@@ -293,12 +313,13 @@ export const getData = async (
           const nextUrl = new URL(pageInfo.linkHref, currentUrl).toString();
 
           if (retryCount > 0) {
+            const baseBackoff = delayBetweenPages * Math.pow(2, retryCount);
             const backoffDelay = Math.min(
-              1000 * Math.pow(2, retryCount),
-              10000,
+              random(baseBackoff * 0.9, baseBackoff * 1.3, false),
+              30000,
             );
             if (ora) {
-              ora.text = `Retrying navigation (${retryCount}/${maxRetries}) after ${backoffDelay}ms... (${allTweets.length}/${postsLimit})`;
+              ora.text = `Retrying navigation (${retryCount}/${maxRetries}) after ${Math.round(backoffDelay)}ms... (${allTweets.length}/${postsLimit})`;
             }
             await new Promise((resolve) => setTimeout(resolve, backoffDelay));
           }
@@ -312,7 +333,8 @@ export const getData = async (
             timeout: 15000,
           });
 
-          await new Promise((resolve) => setTimeout(resolve, 1500));
+          const postLoadDelay = random(1000, 2500, false);
+          await new Promise((resolve) => setTimeout(resolve, postLoadDelay));
           navigationSuccess = true;
         } catch (error) {
           retryCount++;

@@ -6,11 +6,18 @@ import { getData } from "./src";
 
 const username = "unchase12";
 const postsLimit = 500;
+const delayBetweenPages = 4000;
+const maxRetries = 3;
 
 const loader = ora("Loading data...").start();
 
 try {
-  const data = await getData(username, { ora: loader, postsLimit });
+  const data = await getData(username, {
+    ora: loader,
+    postsLimit,
+    delayBetweenPages,
+    maxRetries,
+  });
 
   loader.text = "Got data";
 
