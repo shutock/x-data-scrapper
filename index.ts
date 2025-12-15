@@ -1,26 +1,21 @@
-import ora from "ora";
-import { promises as fs } from "fs";
-import path from "path";
-
+import Bun from "bun";
 import { getData } from "./src";
 
-const username = "eeftp";
+Bun.serve({
+  port: 3000,
+  fetch: async (req) => {
+    const url = new URL(req.url);
 
-const loader = ora("Loading data...").start();
+    try {
+      const username = url.searchParams.get("username");
+      if (!username)
+        return new Response("Username is required", { status: 400 });
 
-try {
-  const data = await getData(username, loader);
-
-  loader.text = "Got data";
-
-  const outDir = path.join(process.cwd(), "out");
-  await fs.mkdir(outDir, { recursive: true });
-
-  const outFile = path.join(outDir, `${username}.json`);
-  await fs.writeFile(outFile, JSON.stringify(data, null, 2), "utf8");
-
-  loader.succeed(`Data saved to ${outFile}`);
-} catch (error) {
-  const message = error instanceof Error ? error.message : "Unknown error";
-  loader.fail(message);
-}
+      const data = await getData(username);
+      return Response.json(data);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      return new Response(message, { status: 500 });
+    }
+  },
+});
