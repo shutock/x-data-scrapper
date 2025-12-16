@@ -1,8 +1,9 @@
+import type { Ora } from "ora";
+import type { HTTPResponse, Page } from "puppeteer";
 import * as cheerio from "cheerio";
-import { type Ora } from "ora";
-import { type Browser } from "puppeteer";
 import { z } from "zod";
 
+import type { BrowserPool } from "~/src/lib/browser-pool";
 import type { RateLimiter } from "~/src/lib/rate-limiter";
 import {
   DELAY_BETWEEN_PAGES,
@@ -17,8 +18,6 @@ import { createRateLimiter } from "~/src/lib/rate-limiter";
 import { schema } from "./schema";
 import {
   BrowserError,
-  createBrowser,
-  createPage,
   getPageHTML,
   getPageInfo,
   handleError,
@@ -30,8 +29,6 @@ import {
   shouldStopPagination,
 } from "./utils";
 
-const baseURL = "https://nitter.net";
-
 type GetDataOptions = {
   postsLimit?: number;
   ora?: Ora;
@@ -39,6 +36,8 @@ type GetDataOptions = {
   maxRetries?: number;
   rateLimiter?: RateLimiter;
   sessionId?: string;
+  baseURL?: string;
+  browserPool?: BrowserPool;
 };
 
 type InternalGetDataOptions = {
@@ -48,18 +47,22 @@ type InternalGetDataOptions = {
   maxRetries: number;
   rateLimiter: RateLimiter;
   sessionId?: string;
+  baseURL: string;
+  browserPool: BrowserPool;
 };
 
 type TweetCollectionState = {
   allTweets: any[];
   seenUrls: Set<string>;
   consecutiveNoNewTweets: number;
+  seenCursors: Set<string>;
 };
 
 const createInitialState = (): TweetCollectionState => ({
   allTweets: [],
   seenUrls: new Set<string>(),
   consecutiveNoNewTweets: 0,
+  seenCursors: new Set<string>(),
 });
 
 const addNewTweets = (state: TweetCollectionState, tweets: any[]): void => {
@@ -88,7 +91,8 @@ const shouldStopCollection = (
     return true;
   }
 
-  if (state.consecutiveNoNewTweets >= 3) {
+  // Increased from 3 to 5 for better reliability
+  if (state.consecutiveNoNewTweets >= 5) {
     return true;
   }
 
@@ -96,7 +100,7 @@ const shouldStopCollection = (
 };
 
 const collectTweetsFromPage = async (
-  browser: Browser,
+  browserPool: BrowserPool,
   username: string,
   options: InternalGetDataOptions,
 ): Promise<any> => {
@@ -107,89 +111,126 @@ const collectTweetsFromPage = async (
     maxRetries,
     rateLimiter,
     sessionId = "default",
+    baseURL,
   } = options;
-  const url = new URL(username, baseURL).toString();
 
-  let page;
-  try {
-    page = await createPage(browser);
+  // Execute scraping inside browser pool
+  return await browserPool.execute(async (page: Page) => {
+    const url = new URL(username, baseURL).toString();
 
-    page.on("response", (response) => {
-      const headers = response.headers();
-      rateLimiter.updateRateLimit(sessionId, headers);
-    });
-
-    await navigateToPage(page, url);
-  } catch (error) {
-    throw new BrowserError("Failed to create or navigate page", error);
-  }
-
-  const state = createInitialState();
-  let profile: any;
-  let stats: any;
-
-  while (!shouldStopCollection(state, postsLimit)) {
     try {
-      const html = await getPageHTML(page);
-      const $ = cheerio.load(html);
-
-      if (!profile) profile = parseProfile($);
-      if (!stats) stats = parseStats($);
-
-      const tweets = parseTweets($, profile);
-      addNewTweets(state, tweets);
-
-      if (shouldStopCollection(state, postsLimit)) break;
-
-      const pageInfo = await getPageInfo(page);
-
-      if (ora) {
-        ora.text = `Page check: showMore=${pageInfo.hasShowMore}, link=${pageInfo.hasLink}, href=${pageInfo.linkHref}, items=${pageInfo.itemCount} (${state.allTweets.length}/${postsLimit})`;
-      }
-
-      if (
-        shouldStopPagination(
-          pageInfo,
-          username,
-          ora,
-          state.allTweets.length,
-          postsLimit,
-        )
-      ) {
-        break;
-      }
-
-      const navigationSuccess = await rateLimiter.execute(
-        () =>
-          navigateToNextPage(page, {
-            delayBetweenPages,
-            maxRetries,
-            ora,
-            currentCount: state.allTweets.length,
-            totalLimit: postsLimit,
-          }),
-        0,
-        sessionId,
+      // Setup page
+      await page.setUserAgent(
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
       );
 
-      if (!navigationSuccess) break;
+      await page.setRequestInterception(true);
+      page.on("request", (req) => {
+        const resourceType = req.resourceType();
+        const blockResources = [
+          "image",
+          "font",
+          "stylesheet",
+          "media",
+          "other",
+        ];
+        if (blockResources.includes(resourceType)) {
+          req.abort();
+        } else {
+          req.continue();
+        }
+      });
 
-      if (ora) {
-        ora.text = `Loading more tweets... (${state.allTweets.length}/${postsLimit})`;
-      }
+      page.on("response", (response: HTTPResponse) => {
+        const headers = response.headers();
+        rateLimiter.updateRateLimit(sessionId, headers);
+      });
+
+      await navigateToPage(page, url);
     } catch (error) {
-      handleError(error, "Error collecting tweets from page");
+      throw new BrowserError("Failed to create or navigate page", error);
     }
-  }
 
-  try {
-    await page.close();
-  } catch {}
-  return {
-    profile,
-    stats,
-    tweets: state.allTweets.slice(0, postsLimit),
-  };
+    const state = createInitialState();
+    let profile: any;
+    let stats: any;
+
+    while (!shouldStopCollection(state, postsLimit)) {
+      try {
+        const html = await getPageHTML(page);
+        const $ = cheerio.load(html);
+
+        if (!profile) profile = parseProfile($);
+        if (!stats) stats = parseStats($);
+
+        const tweets = parseTweets($, profile);
+        addNewTweets(state, tweets);
+
+        if (shouldStopCollection(state, postsLimit)) break;
+
+        const pageInfo = await getPageInfo(page);
+
+        // Detect cursor loops to prevent infinite pagination
+        if (pageInfo.linkHref && pageInfo.linkHref.includes("cursor=")) {
+          const cursorMatch = pageInfo.linkHref.match(/cursor=([^&]+)/);
+          if (cursorMatch && cursorMatch[1]) {
+            const cursor = cursorMatch[1];
+            if (state.seenCursors.has(cursor)) {
+              if (ora) {
+                ora.text = `Detected cursor loop, stopping pagination (${state.allTweets.length}/${postsLimit})`;
+              }
+              break;
+            }
+            state.seenCursors.add(cursor);
+          }
+        }
+
+        if (ora) {
+          ora.text = `Page check: showMore=${pageInfo.hasShowMore}, link=${pageInfo.hasLink}, href=${pageInfo.linkHref}, items=${pageInfo.itemCount} (${state.allTweets.length}/${postsLimit})`;
+        }
+
+        if (
+          shouldStopPagination(
+            pageInfo,
+            username,
+            ora,
+            state.allTweets.length,
+            postsLimit,
+          )
+        ) {
+          break;
+        }
+
+        const navigationSuccess = await rateLimiter.execute(
+          () =>
+            navigateToNextPage(page, {
+              delayBetweenPages,
+              maxRetries,
+              ora,
+              currentCount: state.allTweets.length,
+              totalLimit: postsLimit,
+            }),
+          0,
+          sessionId,
+        );
+
+        if (!navigationSuccess) break;
+
+        if (ora) {
+          ora.text = `Loading more tweets... (${state.allTweets.length}/${postsLimit})`;
+        }
+      } catch (error) {
+        handleError(error, "Error collecting tweets from page");
+      }
+    }
+
+    // Browser pool handles page cleanup
+    return {
+      profile,
+      stats,
+      tweets: state.allTweets.slice(0, postsLimit),
+    };
+  });
 };
 
 export const getXData = async (
@@ -202,7 +243,13 @@ export const getXData = async (
     delayBetweenPages = DELAY_BETWEEN_PAGES,
     maxRetries = 3,
     sessionId,
+    baseURL = "https://nitter.net",
+    browserPool,
   } = options;
+
+  if (!browserPool) {
+    throw new Error("browserPool is required");
+  }
 
   const rateLimiter =
     options.rateLimiter ||
@@ -220,18 +267,16 @@ export const getXData = async (
   const url = new URL(username, baseURL).toString();
   ora?.start(`Fetching ${url}`);
 
-  let browser: Browser | undefined;
-
   try {
-    browser = await createBrowser();
-
-    const data = await collectTweetsFromPage(browser, username, {
+    const data = await collectTweetsFromPage(browserPool, username, {
       postsLimit,
       ora,
       delayBetweenPages,
       maxRetries,
       rateLimiter,
       sessionId,
+      baseURL,
+      browserPool,
     });
 
     const parsed = schema.parse(data);
@@ -240,7 +285,6 @@ export const getXData = async (
     ora?.fail("Failed to fetch page");
     throw error;
   } finally {
-    await browser?.close();
     if (!options.rateLimiter) {
       rateLimiter.destroy();
     }

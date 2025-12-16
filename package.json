@@ -5,8 +5,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "start": "bun run index.ts",
-    "dev": "bun run index.ts --watch",
+    "start": "bun index.ts",
+    "dev": "bun --watch index.ts",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,scss,md}\"",
     "test": "bun test"
   },
@@ -26,6 +26,7 @@
     "lodash": "^4.17.21",
     "ora": "^9.0.0",
     "puppeteer": "^24.31.0",
+    "puppeteer-cluster": "^0.25.0",
     "zod": "^4.1.13"
   }
 }

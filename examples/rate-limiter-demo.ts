@@ -3,6 +3,7 @@ import path from "path";
 import ora from "ora";
 
 import { getXData } from "~/src/get-x-data";
+import { BrowserPool } from "~/src/lib/browser-pool";
 import { createRateLimiter } from "~/src/lib/rate-limiter";
 
 const usernames = ["elonmusk", "BillGates", "BarackObama", "NASA", "SpaceX"];
@@ -11,7 +12,16 @@ const postsLimit = 1000;
 const delayBetweenPages = 4000;
 const maxRetries = 3;
 
-const loader = ora("Initializing rate limiter...").start();
+const loader = ora("Initializing browser pool...").start();
+
+// Initialize browser pool
+const browserPool = new BrowserPool({
+  concurrency: 5,
+  timeout: 600000,
+});
+await browserPool.initialize();
+
+loader.text = "Initializing rate limiter...";
 
 const rateLimiter = createRateLimiter({
   requestsPerSecond: 2,
@@ -40,6 +50,7 @@ const fetchUserData = async (username: string) => {
       postsLimit,
       delayBetweenPages,
       maxRetries,
+      browserPool,
     });
 
     const outDir = path.join(process.cwd(), "out");
@@ -88,6 +99,8 @@ try {
   const message = error instanceof Error ? error.message : "Unknown error";
   loader.fail(message);
   console.error(error);
+} finally {
+  await browserPool.destroy();
 }
 
 process.exit(0);

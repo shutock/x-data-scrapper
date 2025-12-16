@@ -3,13 +3,23 @@ import path from "path";
 import ora from "ora";
 
 import { getXData } from "~/src/get-x-data";
+import { BrowserPool } from "~/src/lib/browser-pool";
 
 const username = "0xNomis";
 const postsLimit = 1000;
 const delayBetweenPages = 4000;
 const maxRetries = 3;
 
-const loader = ora("Loading data...").start();
+const loader = ora("Initializing browser pool...").start();
+
+// Initialize browser pool
+const browserPool = new BrowserPool({
+  concurrency: 5,
+  timeout: 600000,
+});
+await browserPool.initialize();
+
+loader.text = "Loading data...";
 
 try {
   const data = await getXData(username, {
@@ -17,6 +27,7 @@ try {
     postsLimit,
     delayBetweenPages,
     maxRetries,
+    browserPool,
   });
 
   loader.text = "Got data";
@@ -34,5 +45,6 @@ try {
   const message = error instanceof Error ? error.message : "Unknown error";
   loader.fail(message);
 } finally {
+  await browserPool.destroy();
   process.exit(0);
 }

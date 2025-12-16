@@ -1,6 +1,6 @@
 # shutock/twitter-data
 
-A TypeScript tool to scrape Twitter user profiles and tweets via [Nitter](https://nitter.net).
+A TypeScript tool to scrape Twitter user profiles and tweets via Nitter.
 
 ## Features
 
@@ -32,7 +32,7 @@ A TypeScript tool to scrape Twitter user profiles and tweets via [Nitter](https:
 1. Open `demo.ts` and modify the configuration:
 
    ```typescript
-   const username = "unchase12"; // Change this to the desired username
+   const username = "eeftp"; // Change this to the desired username
    const postsLimit = 500; // Maximum number of tweets to scrape
    const delayBetweenPages = 3000; // Delay in ms between page navigations (rate limiting)
    const maxRetries = 3; // Number of retries on navigation failure

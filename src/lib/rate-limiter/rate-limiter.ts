@@ -1,5 +1,7 @@
 import { throttle } from "lodash";
 
+import { RATE_LIMITER_BURST_CAPACITY } from "~/src/lib/constants";
+
 type QueueItem<T> = {
   fn: () => Promise<T>;
   resolve: (value: T) => void;
@@ -113,13 +115,10 @@ export class RateLimiter {
   private refillTokens() {
     const now = Date.now();
     for (const session of this.sessions.values()) {
-      // Logic: targetPerSec = allowedPerSec * 0.7
-      // We assume refill is called every 1s, so we add requestsPerSecond tokens
+      // Calculate burst cap: use configured burst capacity (15) or remaining if lower
+      const burstCap = Math.min(session.remaining, RATE_LIMITER_BURST_CAPACITY);
 
-      // Calculate burst cap: min(remaining, 5)
-      const burstCap = Math.min(session.remaining, 5);
-
-      // Refill
+      // Refill tokens up to burst cap
       session.tokens = Math.min(
         session.tokens + session.requestsPerSecond,
         burstCap,
@@ -136,26 +135,21 @@ export class RateLimiter {
     const session = this.sessions.get(sessionId || this.defaultSessionId);
     if (!session) return;
 
-    const remaining = parseInt(headers["x-rate-limit-remaining"] || "", 10);
-    const reset = parseInt(headers["x-rate-limit-reset"] || "", 10);
+    const remaining = Number.parseInt(
+      headers["x-rate-limit-remaining"] || "",
+      10,
+    );
+    const reset = Number.parseInt(headers["x-rate-limit-reset"] || "", 10);
 
-    if (!isNaN(remaining)) session.remaining = remaining;
-    if (!isNaN(reset)) session.reset = reset;
+    if (!Number.isNaN(remaining)) session.remaining = remaining;
+    if (!Number.isNaN(reset)) session.reset = reset;
 
-    if (!isNaN(remaining) && !isNaN(reset)) {
-      const nowEpoch = Date.now() / 1000;
-      const windowSeconds = Math.max(reset - nowEpoch, 1);
-      const allowedPerSec = remaining / windowSeconds;
-      // Safety factor 0.7
-      session.requestsPerSecond = allowedPerSec * 0.7;
-
-      // If remaining is very low, mark as limited or reduce rate significantly
-      if (remaining <= 10 && reset > nowEpoch) {
-        // "If remaining <= 10 and reset > now, prefer not to use that session"
-        // We can enforce this by setting tokens to 0 or pausing
-        // But let's just let the token bucket handle it (it will be slow)
-        // or we can explicitly delay.
-      }
+    // Simplified: Keep static rate, only track remaining for soft blocking
+    // Dynamic adjustment removed due to inconsistent Nitter headers
+    if (remaining <= 10 && reset > Date.now() / 1000) {
+      console.warn(
+        `[RateLimiter] Session ${sessionId} has low remaining (${remaining})`,
+      );
     }
   }
 
@@ -326,26 +320,25 @@ export class RateLimiter {
 
     if (isRateLimit) {
       session.isLimited = true;
-      // Jitter 0-10s + Reset time
-      // If we have reset time, use it. Else default to 1 min?
+      // More aggressive cooldown: 90s + jitter (0-20s)
       const nowSeconds = Date.now() / 1000;
       let waitSeconds =
-        session.reset > nowSeconds ? session.reset - nowSeconds : 60;
-      waitSeconds += Math.random() * 10; // Jitter
+        session.reset > nowSeconds ? session.reset - nowSeconds : 90;
+      waitSeconds += Math.random() * 20; // Increased jitter
 
       session.nextAvailableTime = Date.now() + waitSeconds * 1000;
 
-      // Don't retry immediately, put back in queue?
-      // User says: "Immediately stop using that session... Wait until resetEpoch + jitter"
-      // The item failed. Should we retry it? Yes, "exponential backoff for retries of the same job"
+      console.warn(
+        `[RateLimiter] Rate limited on ${session.id}, ` +
+          `cooldown until ${new Date(session.nextAvailableTime).toISOString()}`,
+      );
     }
 
     if (item.retries < this.config.maxRetries) {
       item.retries++;
       this.metrics.retriedRequests++;
 
-      const baseBackoff =
-        this.config.retryDelay * Math.pow(2, item.retries - 1);
+      const baseBackoff = this.config.retryDelay * 2 ** (item.retries - 1);
       const jitter = Math.random() * 0.2 * baseBackoff; // +/- 20%
       let delay = baseBackoff + jitter;
 

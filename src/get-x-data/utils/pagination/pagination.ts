@@ -68,6 +68,19 @@ export const shouldStopPagination = (
     return true;
   }
 
+  // Detect end-of-timeline messages
+  const linkTextLower = (pageInfo.linkText || "").toLowerCase();
+  if (
+    linkTextLower.includes("no more") ||
+    linkTextLower.includes("end of") ||
+    linkTextLower.includes("no tweets")
+  ) {
+    if (ora) {
+      ora.text = `Pagination stopped: end-of-timeline detected (${currentCount}/${totalLimit})`;
+    }
+    return true;
+  }
+
   if (pageInfo.linkHref === `/${username}` || pageInfo.linkHref === username) {
     if (ora) {
       ora.text = `Pagination stopped: link-to-profile (text="${pageInfo.linkText}") (${currentCount}/${totalLimit})`;
@@ -116,7 +129,7 @@ export const navigateToNextPage = async (
       }
 
       if (retryCount > 0) {
-        const baseBackoff = delayBetweenPages * Math.pow(2, retryCount);
+        const baseBackoff = delayBetweenPages * 2 ** retryCount;
         const backoffDelay = Math.min(
           random(baseBackoff * 0.9, baseBackoff * 1.3, false),
           30000,
