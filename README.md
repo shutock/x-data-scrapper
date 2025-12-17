@@ -65,6 +65,77 @@ curl "http://localhost:1337/x-data/nasa?postsLimit=1000"
 curl "http://localhost:1337/health"
 ```
 
+## 🐳 Docker Deployment
+
+### Prerequisites
+
+- [Docker](https://www.docker.com/products/docker-desktop/) installed and running
+
+### Quick Start with Docker
+
+```bash
+# Clone repository
+git clone https://github.com/shutock/x-data-scrapper.git
+cd x-data-scrapper
+
+# Copy environment file
+cp .env.example .env
+
+# Build and start with Docker Compose
+docker compose up -d --build
+
+# View logs
+docker compose logs -f x-data-scrapper
+
+# Check status
+docker compose ps
+
+# Stop the service
+docker compose down
+```
+
+### Using Docker Directly
+
+```bash
+# Build the image
+docker build -t x-data-scraper .
+
+# Run the container
+docker run -d \
+  --name x-data-scraper \
+  -p 1337:1337 \
+  --env-file .env \
+  --shm-size=2gb \
+  -v $(pwd)/out:/app/out \
+  x-data-scraper
+
+# View logs
+docker logs -f x-data-scraper
+
+# Stop the container
+docker stop x-data-scraper
+docker rm x-data-scraper
+```
+
+### Docker Configuration
+
+The Docker setup includes:
+
+- **Base Image**: `oven/bun:1.3.4-alpine` with Chromium pre-installed
+- **Port**: 1337 (configurable via `PORT` env variable)
+- **Memory Limit**: 2GB (adjustable in `docker-compose.yml`)
+- **CPU Limit**: 2 cores (adjustable in `docker-compose.yml`)
+- **Shared Memory**: 2GB (required for Puppeteer/Chromium)
+- **Volume**: `./out` directory for persistent data storage
+
+### Important Docker Notes
+
+⚠️ **Shared Memory Size**: The `--shm-size=2gb` flag is critical for Puppeteer/Chromium to function properly. Without it, the browser will crash.
+
+📁 **Data Persistence**: Scraped data is saved to the `./out` directory which is mounted as a volume, ensuring data persists even if the container is removed.
+
+🔧 **Environment Variables**: Make sure to configure your `.env` file before running the container. All environment variables from `.env` will be loaded automatically.
+
 ## 📖 API Documentation
 
 ### **GET /x-data/:username**
