@@ -1,13 +1,17 @@
 meta {
-  name: 0xNomis 
+  name: 0xNomis
   type: http
   seq: 4
 }
 
 get {
-  url: {{BASE_URL}}/metrics
+  url: {{BASE_URL}}/x-data/0xNomis?tweetsLimit=1
   body: none
   auth: inherit
+}
+
+params:query {
+  tweetsLimit: 1
 }
 
 settings {
