@@ -56,10 +56,10 @@ bun run index
 
 ```bash
 # Get 100 tweets from a user
-curl "http://localhost:1337/x-data/elonmusk?postsLimit=100"
+curl "http://localhost:1337/x-data/elonmusk?tweetsLimit=100"
 
 # Get 1000 tweets
-curl "http://localhost:1337/x-data/nasa?postsLimit=1000"
+curl "http://localhost:1337/x-data/nasa?tweetsLimit=1000"
 
 # Check service health
 curl "http://localhost:1337/health"
@@ -146,7 +146,7 @@ Scrape tweets from a Twitter/X user.
 
 - **Path**: `username` (1-15 chars, alphanumeric + underscore only)
 - **Query**:
-  - `postsLimit` (optional): 1-5000, default: 100
+  - `tweetsLimit` (optional): 1-5000, default: 100
   - `delayBetweenPages` (optional): 1000-30000ms, default: 4000
   - `maxRetries` (optional): 1-10, default: 3
 

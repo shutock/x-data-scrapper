@@ -6,7 +6,7 @@ import { getXData } from "~/src/get-x-data";
 import { BrowserPool } from "~/src/lib/browser-pool";
 
 const username = "0xNomis";
-const postsLimit = 1000;
+const tweetsLimit = 1000;
 const delayBetweenPages = 4000;
 const maxRetries = 3;
 
@@ -24,7 +24,7 @@ loader.text = "Loading data...";
 try {
   const data = await getXData(username, {
     ora: loader,
-    postsLimit,
+    tweetsLimit,
     delayBetweenPages,
     maxRetries,
     browserPool,
@@ -38,7 +38,7 @@ try {
   const outFile = path.join(outDir, `${username}.json`);
   await fs.writeFile(outFile, JSON.stringify(data, null, 2), "utf8");
 
-  console.log("\ngot", data.tweets.length, "/", postsLimit);
+  console.log("\ngot", data.tweets.length, "/", tweetsLimit);
 
   loader.succeed(`Data saved to ${outFile}`);
 } catch (error) {

@@ -5,13 +5,13 @@ type Result = Awaited<ReturnType<typeof getXData>>;
 const baseUrl = "http://localhost:1337";
 
 const usernames = ["elonmusk", "BillGates", "BarackObama", "NASA", "SpaceX"];
-const postsLimit = 1000;
+const tweetsLimit = 1000;
 
 const results = await Promise.all(
   usernames.map(async (username) => {
     try {
       const url = new URL(`x-data/${username}`, baseUrl);
-      url.searchParams.append("postsLimit", postsLimit.toString());
+      url.searchParams.append("tweetsLimit", tweetsLimit.toString());
       const res = await fetch(url);
       const data = (await res.json()) as any;
 
@@ -38,10 +38,12 @@ results.forEach((item) => {
     const metadata = (item.data as any).metadata;
     if (metadata) {
       console.log(
-        `${item.username}: ${item.data.tweets.length}/${postsLimit} (status: ${metadata.status}, instance: ${metadata.instance})`,
+        `${item.username}: ${item.data.tweets.length}/${tweetsLimit} (status: ${metadata.status}, instance: ${metadata.instance})`,
       );
     } else {
-      console.log(`${item.username}: ${item.data.tweets.length}/${postsLimit}`);
+      console.log(
+        `${item.username}: ${item.data.tweets.length}/${tweetsLimit}`,
+      );
     }
   } else {
     console.log(`${item.username}: ERROR - Unknown error`);

@@ -128,7 +128,7 @@ async function saveToFileIfEnabled(username: string, data: any): Promise<void> {
 
 // Request validation schema
 const querySchema = z.object({
-  postsLimit: z.coerce.number().min(1).max(5000).default(100),
+  tweetsLimit: z.coerce.number().min(1).max(5000).default(100),
   delayBetweenPages: z.coerce.number().min(1000).max(30000).default(4000),
   maxRetries: z.coerce.number().min(1).max(10).default(3),
 });
@@ -162,7 +162,7 @@ app.get("/x-data/:username", async (c) => {
 
   // Validate query params
   const result = querySchema.safeParse({
-    postsLimit: c.req.query("postsLimit"),
+    tweetsLimit: c.req.query("tweetsLimit"),
     delayBetweenPages: c.req.query("delayBetweenPages"),
     maxRetries: c.req.query("maxRetries"),
   });
@@ -177,12 +177,12 @@ app.get("/x-data/:username", async (c) => {
     );
   }
 
-  const { postsLimit, delayBetweenPages, maxRetries } = result.data;
+  const { tweetsLimit, delayBetweenPages, maxRetries } = result.data;
 
   let lastError: Error | null = null;
   let partialData: any = null;
   const minTweetsForPartial = Math.ceil(
-    postsLimit * PARTIAL_RESULTS_MIN_THRESHOLD,
+    tweetsLimit * PARTIAL_RESULTS_MIN_THRESHOLD,
   );
 
   // Try up to MAX_INSTANCE_RETRIES different instances
@@ -209,7 +209,7 @@ app.get("/x-data/:username", async (c) => {
       // Create scraping promise with progress tracking
       const scrapingPromise = jobLimiter.execute(async () => {
         return await getXData(validatedUsername, {
-          postsLimit,
+          tweetsLimit,
           delayBetweenPages,
           maxRetries,
           rateLimiter: nitterLimiter,
@@ -230,7 +230,7 @@ app.get("/x-data/:username", async (c) => {
       await saveToFileIfEnabled(validatedUsername, data);
 
       // Check if result is suspiciously empty (possible instance failure)
-      if (postsLimit >= 50 && data.tweets.length === 0) {
+      if (tweetsLimit >= 50 && data.tweets.length === 0) {
         console.warn(
           `[App] Instance ${baseURL} returned 0 tweets for ${validatedUsername}, marking as potentially failed`,
         );
@@ -255,7 +255,7 @@ app.get("/x-data/:username", async (c) => {
         ...data,
         metadata: {
           collected: data.tweets.length,
-          requested: postsLimit,
+          requested: tweetsLimit,
           status: "complete",
           instance: baseURL,
           attempts: attempt + 1,
@@ -272,7 +272,7 @@ app.get("/x-data/:username", async (c) => {
         partialData.tweets.length >= minTweetsForPartial
       ) {
         console.warn(
-          `[App] Request timed out for ${validatedUsername}, returning partial results (${partialData.tweets.length}/${postsLimit})`,
+          `[App] Request timed out for ${validatedUsername}, returning partial results (${partialData.tweets.length}/${tweetsLimit})`,
         );
 
         await saveToFileIfEnabled(validatedUsername, partialData);
@@ -282,7 +282,7 @@ app.get("/x-data/:username", async (c) => {
             ...partialData,
             metadata: {
               collected: partialData.tweets.length,
-              requested: postsLimit,
+              requested: tweetsLimit,
               status: "partial",
               reason: "timeout",
               instance: baseURL,
@@ -327,7 +327,7 @@ app.get("/x-data/:username", async (c) => {
       error: lastError?.message || "All Nitter instances failed",
       metadata: {
         collected: partialData?.tweets?.length || 0,
-        requested: postsLimit,
+        requested: tweetsLimit,
         status: "failed",
         instance: "all_failed",
         attempts: MAX_INSTANCE_RETRIES,

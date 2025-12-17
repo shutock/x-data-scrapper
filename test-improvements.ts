@@ -9,7 +9,7 @@ console.log("🧪 Testing Production Improvements\n");
 // Test 1: Multi-instance retry (5 concurrent requests)
 console.log("Test 1: Multi-instance retry & concurrent requests");
 const usernames = ["0xNomis", "unchase12", "nasa", "eeftp", "artyshatilov"];
-const postsLimit = 100;
+const tweetsLimit = 100;
 
 const startTime = Date.now();
 
@@ -17,7 +17,7 @@ const results = await Promise.all(
   usernames.map(async (username) => {
     try {
       const url = new URL(`x-data/${username}`, baseUrl);
-      url.searchParams.append("postsLimit", postsLimit.toString());
+      url.searchParams.append("tweetsLimit", tweetsLimit.toString());
       const res = await fetch(url);
       const data = (await res.json()) as any;
 
@@ -34,7 +34,7 @@ const results = await Promise.all(
         username,
         status: res.status === 206 ? "partial" : "complete",
         collected: data.tweets.length,
-        requested: postsLimit,
+        requested: tweetsLimit,
         metadata: data.metadata,
       };
     } catch (error) {
@@ -93,15 +93,15 @@ for (const invalidUser of invalidUsernames) {
 // Test 3: Invalid query params
 console.log("\n\nTest 3: Query parameter validation");
 const invalidParams = [
-  { postsLimit: 10000, expected: "rejected" },
-  { postsLimit: 0, expected: "rejected" },
+  { tweetsLimit: 10000, expected: "rejected" },
+  { tweetsLimit: 0, expected: "rejected" },
   { delayBetweenPages: 500, expected: "rejected" },
 ];
 
 for (const params of invalidParams) {
   const url = new URL("x-data/nasa", baseUrl);
-  if (params.postsLimit !== undefined)
-    url.searchParams.append("postsLimit", String(params.postsLimit));
+  if (params.tweetsLimit !== undefined)
+    url.searchParams.append("tweetsLimit", String(params.tweetsLimit));
   if (params.delayBetweenPages !== undefined)
     url.searchParams.append(
       "delayBetweenPages",

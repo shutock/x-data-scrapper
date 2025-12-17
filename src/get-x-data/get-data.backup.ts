@@ -11,11 +11,11 @@ export const getData = async (
   username: string,
   {
     ora,
-    postsLimit = 100,
+    tweetsLimit = 100,
     delayBetweenPages = 2000,
     maxRetries = 3,
   }: {
-    postsLimit?: number;
+    tweetsLimit?: number;
     ora?: Ora;
     delayBetweenPages?: number;
     maxRetries?: number;
@@ -62,7 +62,7 @@ export const getData = async (
     let stats: any;
     let consecutiveNoNewTweets = 0;
 
-    while (allTweets.length < postsLimit) {
+    while (allTweets.length < tweetsLimit) {
       let html = await page.evaluate(
         () => (globalThis as any).document?.body?.outerHTML || "",
       );
@@ -239,7 +239,7 @@ export const getData = async (
 
       allTweets.push(...newTweets);
 
-      if (allTweets.length >= postsLimit) {
+      if (allTweets.length >= tweetsLimit) {
         break;
       }
 
@@ -267,19 +267,19 @@ export const getData = async (
       });
 
       if (ora) {
-        ora.text = `Page check: showMore=${pageInfo.hasShowMore}, link=${pageInfo.hasLink}, href=${pageInfo.linkHref}, items=${pageInfo.itemCount} (${allTweets.length}/${postsLimit})`;
+        ora.text = `Page check: showMore=${pageInfo.hasShowMore}, link=${pageInfo.hasLink}, href=${pageInfo.linkHref}, items=${pageInfo.itemCount} (${allTweets.length}/${tweetsLimit})`;
       }
 
       if (!pageInfo.hasShowMore) {
         if (ora) {
-          ora.text = `Pagination stopped: no-show-more-div, items=${pageInfo.itemCount} (${allTweets.length}/${postsLimit})`;
+          ora.text = `Pagination stopped: no-show-more-div, items=${pageInfo.itemCount} (${allTweets.length}/${tweetsLimit})`;
         }
         break;
       }
 
       if (!pageInfo.linkHref) {
         if (ora) {
-          ora.text = `Pagination stopped: no-link-href (${allTweets.length}/${postsLimit})`;
+          ora.text = `Pagination stopped: no-link-href (${allTweets.length}/${tweetsLimit})`;
         }
         break;
       }
@@ -289,7 +289,7 @@ export const getData = async (
         pageInfo.linkHref === username
       ) {
         if (ora) {
-          ora.text = `Pagination stopped: link-to-profile (${allTweets.length}/${postsLimit})`;
+          ora.text = `Pagination stopped: link-to-profile (${allTweets.length}/${tweetsLimit})`;
         }
         break;
       }
@@ -300,7 +300,7 @@ export const getData = async (
         false,
       );
       if (ora) {
-        ora.text = `Rate limit delay (${Math.round(randomDelay)}ms)... (${allTweets.length}/${postsLimit})`;
+        ora.text = `Rate limit delay (${Math.round(randomDelay)}ms)... (${allTweets.length}/${tweetsLimit})`;
       }
       await new Promise((resolve) => setTimeout(resolve, randomDelay));
 
@@ -319,7 +319,7 @@ export const getData = async (
               30000,
             );
             if (ora) {
-              ora.text = `Retrying navigation (${retryCount}/${maxRetries}) after ${Math.round(backoffDelay)}ms... (${allTweets.length}/${postsLimit})`;
+              ora.text = `Retrying navigation (${retryCount}/${maxRetries}) after ${Math.round(backoffDelay)}ms... (${allTweets.length}/${tweetsLimit})`;
             }
             await new Promise((resolve) => setTimeout(resolve, backoffDelay));
           }
@@ -340,7 +340,7 @@ export const getData = async (
           retryCount++;
           if (retryCount >= maxRetries) {
             if (ora) {
-              ora.text = `Pagination stopped after ${maxRetries} retries: ${error instanceof Error ? error.message : "unknown"} (${allTweets.length}/${postsLimit})`;
+              ora.text = `Pagination stopped after ${maxRetries} retries: ${error instanceof Error ? error.message : "unknown"} (${allTweets.length}/${tweetsLimit})`;
             }
             break;
           }
@@ -352,14 +352,14 @@ export const getData = async (
       }
 
       if (ora) {
-        ora.text = `Loading more tweets... (${allTweets.length}/${postsLimit})`;
+        ora.text = `Loading more tweets... (${allTweets.length}/${tweetsLimit})`;
       }
     }
 
     const parsed = schema.parse({
       profile,
       stats,
-      tweets: allTweets.slice(0, postsLimit),
+      tweets: allTweets.slice(0, tweetsLimit),
     });
 
     return parsed;

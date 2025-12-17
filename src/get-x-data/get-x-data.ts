@@ -30,7 +30,7 @@ import {
 } from "./utils";
 
 type GetDataOptions = {
-  postsLimit?: number;
+  tweetsLimit?: number;
   ora?: Ora;
   delayBetweenPages?: number;
   maxRetries?: number;
@@ -42,7 +42,7 @@ type GetDataOptions = {
 };
 
 type InternalGetDataOptions = {
-  postsLimit: number;
+  tweetsLimit: number;
   ora?: Ora;
   delayBetweenPages: number;
   maxRetries: number;
@@ -87,9 +87,9 @@ const addNewTweets = (state: TweetCollectionState, tweets: any[]): void => {
 
 const shouldStopCollection = (
   state: TweetCollectionState,
-  postsLimit: number,
+  tweetsLimit: number,
 ): boolean => {
-  if (state.allTweets.length >= postsLimit) {
+  if (state.allTweets.length >= tweetsLimit) {
     return true;
   }
 
@@ -107,7 +107,7 @@ const collectTweetsFromPage = async (
   options: InternalGetDataOptions,
 ): Promise<any> => {
   const {
-    postsLimit,
+    tweetsLimit,
     ora,
     delayBetweenPages,
     maxRetries,
@@ -157,7 +157,7 @@ const collectTweetsFromPage = async (
     let profile: any;
     let stats: any;
 
-    while (!shouldStopCollection(state, postsLimit)) {
+    while (!shouldStopCollection(state, tweetsLimit)) {
       try {
         const html = await getPageHTML(page);
         const $ = cheerio.load(html);
@@ -173,11 +173,11 @@ const collectTweetsFromPage = async (
           options.onProgress({
             profile,
             stats,
-            tweets: state.allTweets.slice(0, postsLimit),
+            tweets: state.allTweets.slice(0, tweetsLimit),
           });
         }
 
-        if (shouldStopCollection(state, postsLimit)) break;
+        if (shouldStopCollection(state, tweetsLimit)) break;
 
         const pageInfo = await getPageInfo(page);
 
@@ -188,7 +188,7 @@ const collectTweetsFromPage = async (
             const cursor = cursorMatch[1];
             if (state.seenCursors.has(cursor)) {
               if (ora) {
-                ora.text = `Detected cursor loop, stopping pagination (${state.allTweets.length}/${postsLimit})`;
+                ora.text = `Detected cursor loop, stopping pagination (${state.allTweets.length}/${tweetsLimit})`;
               }
               break;
             }
@@ -197,7 +197,7 @@ const collectTweetsFromPage = async (
         }
 
         if (ora) {
-          ora.text = `Page check: showMore=${pageInfo.hasShowMore}, link=${pageInfo.hasLink}, href=${pageInfo.linkHref}, items=${pageInfo.itemCount} (${state.allTweets.length}/${postsLimit})`;
+          ora.text = `Page check: showMore=${pageInfo.hasShowMore}, link=${pageInfo.hasLink}, href=${pageInfo.linkHref}, items=${pageInfo.itemCount} (${state.allTweets.length}/${tweetsLimit})`;
         }
 
         if (
@@ -206,7 +206,7 @@ const collectTweetsFromPage = async (
             username,
             ora,
             state.allTweets.length,
-            postsLimit,
+            tweetsLimit,
           )
         ) {
           break;
@@ -219,7 +219,7 @@ const collectTweetsFromPage = async (
               maxRetries,
               ora,
               currentCount: state.allTweets.length,
-              totalLimit: postsLimit,
+              totalLimit: tweetsLimit,
             }),
           0,
           sessionId,
@@ -228,7 +228,7 @@ const collectTweetsFromPage = async (
         if (!navigationSuccess) break;
 
         if (ora) {
-          ora.text = `Loading more tweets... (${state.allTweets.length}/${postsLimit})`;
+          ora.text = `Loading more tweets... (${state.allTweets.length}/${tweetsLimit})`;
         }
       } catch (error) {
         handleError(error, "Error collecting tweets from page");
@@ -239,7 +239,7 @@ const collectTweetsFromPage = async (
     return {
       profile,
       stats,
-      tweets: state.allTweets.slice(0, postsLimit),
+      tweets: state.allTweets.slice(0, tweetsLimit),
     };
   });
 };
@@ -250,7 +250,7 @@ export const getXData = async (
 ): Promise<z.infer<typeof schema>> => {
   const {
     ora,
-    postsLimit = 100,
+    tweetsLimit = 100,
     delayBetweenPages = DELAY_BETWEEN_PAGES,
     maxRetries = 3,
     sessionId,
@@ -281,7 +281,7 @@ export const getXData = async (
 
   try {
     const data = await collectTweetsFromPage(browserPool, username, {
-      postsLimit,
+      tweetsLimit,
       ora,
       delayBetweenPages,
       maxRetries,

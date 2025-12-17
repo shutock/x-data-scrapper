@@ -8,7 +8,7 @@ import { createRateLimiter } from "~/src/lib/rate-limiter";
 
 const usernames = ["elonmusk", "BillGates", "BarackObama", "NASA", "SpaceX"];
 
-const postsLimit = 1000;
+const tweetsLimit = 1000;
 const delayBetweenPages = 4000;
 const maxRetries = 3;
 
@@ -47,7 +47,7 @@ const fetchUserData = async (username: string) => {
   return rateLimiter.execute(async () => {
     loader.text = `Fetching data for @${username}...`;
     const data = await getXData(username, {
-      postsLimit,
+      tweetsLimit,
       delayBetweenPages,
       maxRetries,
       browserPool,
