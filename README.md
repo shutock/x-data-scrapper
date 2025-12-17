@@ -280,7 +280,7 @@ See `.env.example` for all options.
 ### Run Tests
 
 ```bash
-# All unit tests (82 tests)
+# All unit tests
 bun test
 ```
 
