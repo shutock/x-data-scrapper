@@ -14,28 +14,36 @@ import {
 describe("Parser Utils", () => {
   describe("createAbsoluteUrl", () => {
     test("should convert relative URL to absolute", () => {
-      const result = createAbsoluteUrl("/user/profile");
+      const result = createAbsoluteUrl("/user/profile", "https://nitter.net");
       expect(result).toBe("https://nitter.net/user/profile");
     });
 
     test("should handle absolute URLs", () => {
-      const result = createAbsoluteUrl("https://example.com/path");
+      const result = createAbsoluteUrl(
+        "https://example.com/path",
+        "https://nitter.net",
+      );
       expect(result).toBe("https://example.com/path");
     });
 
     test("should return undefined for null input", () => {
-      const result = createAbsoluteUrl(null);
+      const result = createAbsoluteUrl(null, "https://nitter.net");
       expect(result).toBeUndefined();
     });
 
     test("should return undefined for undefined input", () => {
-      const result = createAbsoluteUrl(undefined);
+      const result = createAbsoluteUrl(undefined, "https://nitter.net");
       expect(result).toBeUndefined();
     });
 
     test("should handle invalid URLs gracefully", () => {
-      const result = createAbsoluteUrl("not a valid url");
+      const result = createAbsoluteUrl("not a valid url", "https://nitter.net");
       expect(result).toBeDefined();
+    });
+
+    test("should return url as-is if no baseURL provided", () => {
+      const result = createAbsoluteUrl("/user/profile");
+      expect(result).toBe("/user/profile");
     });
   });
 

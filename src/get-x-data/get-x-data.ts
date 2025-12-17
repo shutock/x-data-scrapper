@@ -162,10 +162,10 @@ const collectTweetsFromPage = async (
         const html = await getPageHTML(page);
         const $ = cheerio.load(html);
 
-        if (!profile) profile = parseProfile($);
+        if (!profile) profile = parseProfile($, baseURL);
         if (!stats) stats = parseStats($);
 
-        const tweets = parseTweets($, profile);
+        const tweets = parseTweets($, profile, baseURL);
         addNewTweets(state, tweets);
 
         // Report progress for timeout handling

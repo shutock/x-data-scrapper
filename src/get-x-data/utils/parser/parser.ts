@@ -1,7 +1,5 @@
 import * as cheerio from "cheerio";
 
-const baseURL = "https://nitter.net";
-
 type Author = {
   username: string;
   verification?: "business" | "blue";
@@ -48,8 +46,12 @@ type Stats = {
   likes: number;
 };
 
-export const createAbsoluteUrl = (url?: string | null): string | undefined => {
+export const createAbsoluteUrl = (
+  url?: string | null,
+  baseURL?: string,
+): string | undefined => {
   if (!url) return undefined;
+  if (!baseURL) return url; // If no baseURL, return as-is (might already be absolute)
   try {
     return new URL(url, baseURL).toString();
   } catch {
@@ -77,11 +79,14 @@ export const extractVerification = (
   return undefined;
 };
 
-export const parseProfile = ($: cheerio.CheerioAPI): Profile => {
+export const parseProfile = (
+  $: cheerio.CheerioAPI,
+  baseURL?: string,
+): Profile => {
   const bannerStyle = $(".profile-banner a").attr("style") || "";
   const coverMatch = bannerStyle.match(/url\(([^)]+)\)/);
   const cover_photo_url = coverMatch
-    ? createAbsoluteUrl(coverMatch[1])
+    ? createAbsoluteUrl(coverMatch[1], baseURL)
     : undefined;
 
   return {
@@ -89,7 +94,8 @@ export const parseProfile = ($: cheerio.CheerioAPI): Profile => {
     verification: extractVerification($(".profile-card-fullname")),
     name: extractText($, ".profile-card-fullname") || undefined,
     profile_photo_url:
-      createAbsoluteUrl($(".profile-card-avatar img").attr("src")) || undefined,
+      createAbsoluteUrl($(".profile-card-avatar img").attr("src"), baseURL) ||
+      undefined,
     bio: extractText($, ".profile-bio") || undefined,
     profile_link: $(".profile-website a").attr("href") || "",
     cover_photo_url,
@@ -116,13 +122,13 @@ export const parseStats = ($: cheerio.CheerioAPI): Stats => {
   };
 };
 
-const parseAuthor = (root: cheerio.Cheerio<any>): Author => {
+const parseAuthor = (root: cheerio.Cheerio<any>, baseURL?: string): Author => {
   return {
     username: root.find(".username").first().text().trim().replace(/^@/, ""),
     verification: extractVerification(root),
     name: root.find(".fullname").first().text().trim() || undefined,
     profile_photo_url:
-      createAbsoluteUrl(root.find(".tweet-avatar img").attr("src")) ||
+      createAbsoluteUrl(root.find(".tweet-avatar img").attr("src"), baseURL) ||
       undefined,
   };
 };
@@ -139,6 +145,7 @@ const extractStatValue = (
 const parseBaseTweet = (
   $: cheerio.CheerioAPI,
   item: cheerio.Cheerio<any>,
+  baseURL?: string,
 ): BaseTweet | null => {
   const body = item.find(".tweet-body").first();
   if (body.length === 0) return null;
@@ -151,9 +158,9 @@ const parseBaseTweet = (
     header.find(".tweet-date a").text();
 
   return {
-    author: parseAuthor(header),
+    author: parseAuthor(header, baseURL),
     content: body.find(".tweet-content").text().trim(),
-    url: createAbsoluteUrl(linkHref) || "",
+    url: createAbsoluteUrl(linkHref, baseURL) || "",
     created_at: createdTitle,
     metrics: {
       comments: extractStatValue(statsRoot, "icon-comment"),
@@ -171,6 +178,7 @@ const parseQuoteTweet = (
   $: cheerio.CheerioAPI,
   baseTweet: BaseTweet,
   body: cheerio.Cheerio<any>,
+  baseURL?: string,
 ): Tweet => {
   const quoteRoot = body.find(".quote, .quoted-tweet").first();
   const qHeader = quoteRoot;
@@ -180,12 +188,14 @@ const parseQuoteTweet = (
     verification: extractVerification(qHeader),
     name: qHeader.find(".fullname").first().text().trim() || undefined,
     profile_photo_url:
-      createAbsoluteUrl(qHeader.find("img").attr("src")) || undefined,
+      createAbsoluteUrl(qHeader.find("img").attr("src"), baseURL) || undefined,
   };
 
   const qUrl =
-    createAbsoluteUrl(qHeader.find("a[href*='/status/']").attr("href")) ||
-    baseTweet.url;
+    createAbsoluteUrl(
+      qHeader.find("a[href*='/status/']").attr("href"),
+      baseURL,
+    ) || baseTweet.url;
   const qContent = qHeader.text().trim();
 
   const child: Tweet = {
@@ -228,13 +238,14 @@ const parseRetweet = (baseTweet: BaseTweet, profile: Profile): Tweet => {
 export const parseTweets = (
   $: cheerio.CheerioAPI,
   profile: Profile,
+  baseURL?: string,
 ): Tweet[] => {
   return $(".timeline .timeline-item")
     .map((_, item) => {
       const it = $(item);
       if (it.hasClass("show-more")) return null;
 
-      const baseTweet = parseBaseTweet($, it);
+      const baseTweet = parseBaseTweet($, it, baseURL);
       if (!baseTweet) return null;
 
       const body = it.find(".tweet-body").first();
@@ -246,7 +257,7 @@ export const parseTweets = (
       }
 
       if (hasQuote) {
-        return parseQuoteTweet($, baseTweet, body);
+        return parseQuoteTweet($, baseTweet, body, baseURL);
       }
 
       return { ...baseTweet, kind: "tweet" } as Tweet;
