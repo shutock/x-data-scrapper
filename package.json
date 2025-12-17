@@ -8,7 +8,14 @@
     "start": "bun index.ts",
     "dev": "bun --watch index.ts",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,scss,md}\"",
-    "test": "bun test"
+    "test": "bun test",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f x-data-scrapper",
+    "docker:restart": "docker compose restart x-data-scrapper",
+    "docker:ps": "docker compose ps",
+    "docker:start": "docker compose up -d --build"
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^4.7.0",

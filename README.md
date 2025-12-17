@@ -32,8 +32,8 @@ A production-ready TypeScript service to scrape Twitter/X user profiles and twee
 
 ```bash
 # Clone repository
-git clone https://github.com/shutock/twitter-data.git
-cd twitter-data
+git clone https://github.com/shutock/x-data-scrapper.git
+cd x-data-scrapper
 
 # Install dependencies
 bun install
