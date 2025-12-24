@@ -1,6 +1,8 @@
+import type z from "zod";
 import { describe, expect, test } from "bun:test";
 import * as cheerio from "cheerio";
 
+import type { profileSchema } from "../../schema";
 import {
   createAbsoluteUrl,
   extractNumber,
@@ -28,12 +30,12 @@ describe("Parser Utils", () => {
 
     test("should return undefined for null input", () => {
       const result = createAbsoluteUrl(null, "https://nitter.net");
-      expect(result).toBeUndefined();
+      expect(result).toBeNull();
     });
 
     test("should return undefined for undefined input", () => {
       const result = createAbsoluteUrl(undefined, "https://nitter.net");
-      expect(result).toBeUndefined();
+      expect(result).toBeNull();
     });
 
     test("should handle invalid URLs gracefully", () => {
@@ -132,7 +134,7 @@ describe("Parser Utils", () => {
       const $ = cheerio.load(html);
       const element = $("div");
       const result = extractVerification(element);
-      expect(result).toBeUndefined();
+      expect(result).toBeNull();
     });
 
     test("should prioritize business over blue", () => {
@@ -177,8 +179,8 @@ describe("Parser Utils", () => {
       const result = parseProfile($);
 
       expect(result.username).toBe("testuser");
-      expect(result.name).toBeUndefined();
-      expect(result.bio).toBeUndefined();
+      expect(result.name).toBeNull();
+      expect(result.bio).toBeNull();
     });
   });
 
@@ -222,9 +224,14 @@ describe("Parser Utils", () => {
   });
 
   describe("parseTweets", () => {
-    const mockProfile = {
+    const mockProfile: z.infer<typeof profileSchema> = {
       username: "testuser",
+      verification: null,
+      name: null,
+      profile_photo_url: null,
+      bio: null,
       profile_link: "https://nitter.net/testuser",
+      cover_photo_url: null,
       registration_date: "2020-01-01",
     };
 

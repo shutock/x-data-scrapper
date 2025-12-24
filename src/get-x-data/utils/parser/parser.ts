@@ -1,51 +1,22 @@
-import type z from "zod";
 import * as cheerio from "cheerio";
+import { z } from "zod";
 
-type Author = {
-  username: string;
-  verification: Profile["verification"];
-  name: string | null;
-  profile_photo_url: string | null;
-};
+import type {
+  generalProfileSchema,
+  generalTweetSchema,
+  profileSchema,
+  schema,
+} from "../../schema";
 
-type TweetMetrics = {
-  comments: number;
-  retweets: number;
-  quotes: number;
-  likes: number;
-  views: number;
-};
+type Author = z.infer<typeof generalProfileSchema>;
 
-type BaseTweet = {
-  author: Author;
-  content: string;
-  url: string;
-  created_at: string;
-  metrics: TweetMetrics;
-};
+type BaseTweet = Omit<z.infer<typeof generalTweetSchema>, "kind">;
 
-type Tweet = BaseTweet & {
-  kind: "tweet" | "retweet" | "quote";
-  child?: Tweet;
-};
+type Tweet = z.infer<typeof schema>["tweets"][number];
 
-type Profile = {
-  username: string;
-  verification: "business" | "blue" | "government" | null;
-  name: string | null;
-  profile_photo_url: string | null;
-  bio: string | null;
-  profile_link: string;
-  cover_photo_url: string | null;
-  registration_date: string;
-};
+type Profile = z.infer<typeof profileSchema>;
 
-type Stats = {
-  tweets: number;
-  following: number;
-  followers: number;
-  likes: number;
-};
+type Stats = z.infer<typeof schema>["stats"];
 
 export const createAbsoluteUrl = (
   url?: string | null,
