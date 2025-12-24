@@ -42,6 +42,27 @@ export const extractNumber = (text: string): number => {
   return Number((text || "").replace(/[^0-9]/g, "")) || 0;
 };
 
+export const toISODate = (input?: string | null): string => {
+  const raw = (input || "").trim();
+  if (!raw) return "";
+  const cleaned = raw.replace(/\u00B7/g, " ").replace(/\sat\s+/i, " ");
+  const candidates = [
+    cleaned,
+    cleaned.replace(/^(\d{1,2}:\d{2}\s*[AP]M)\s*,?\s*(.+)$/i, "$2 $1"),
+    cleaned.replace(/^(\d{4}-\d{2}-\d{2})\s+(\d{1,2}:\d{2}:\d{2}(?:\.\d{3})?)\s*(Z|[+-]\d{2}:?\d{2})?$/i, "$1T$2$3"),
+  ];
+  for (const c of candidates) {
+    const d = new Date(c);
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  }
+  const num = Number(cleaned);
+  if (!Number.isNaN(num)) {
+    const d = new Date(num);
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  }
+  return raw;
+};
+
 export const extractVerification = (
   element: cheerio.Cheerio<any>,
 ): Profile["verification"] => {
@@ -68,9 +89,10 @@ export const parseProfile = (
     cover_photo_url:
       createAbsoluteUrl($(".profile-banner a img").attr("src"), baseURL) ||
       null,
-    registration_date:
+    registration_date: toISODate(
       $(".profile-joindate span").attr("title") ||
       extractText($, ".profile-joindate"),
+    ),
   };
 };
 
@@ -130,7 +152,7 @@ const parseBaseTweet = (
     author: parseAuthor(header, baseURL),
     content: body.find(".tweet-content").text().trim(),
     url: createAbsoluteUrl(linkHref, baseURL) || "",
-    created_at: createdTitle,
+    created_at: toISODate(createdTitle),
     metrics: {
       comments: extractStatValue(statsRoot, "icon-comment"),
       retweets: extractStatValue(statsRoot, "icon-retweet"),

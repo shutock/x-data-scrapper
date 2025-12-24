@@ -11,6 +11,7 @@ import {
   parseProfile,
   parseStats,
   parseTweets,
+  toISODate,
 } from "./parser";
 
 describe("Parser Utils", () => {
@@ -165,7 +166,7 @@ describe("Parser Utils", () => {
       expect(result.name).toBe("Test User");
       expect(result.bio).toBe("This is a test bio");
       expect(result.profile_link).toBe("https://example.com");
-      expect(result.registration_date).toBe("2020-01-01");
+      expect(result.registration_date).toBe("2020-01-01T00:00:00.000Z");
     });
 
     test("should handle missing optional fields", () => {
@@ -184,6 +185,37 @@ describe("Parser Utils", () => {
     });
   });
 
+  describe("toISODate", () => {
+    test("parses YYYY-MM-DD to ISO string (UTC midnight)", () => {
+      const iso = toISODate("2020-01-01");
+      expect(iso).toBe("2020-01-01T00:00:00.000Z");
+    });
+
+    test("parses 'Jan 1, 2020 at 5:30 PM' to ISO string", () => {
+      const iso = toISODate("Jan 1, 2020 at 5:30 PM");
+      expect(typeof iso).toBe("string");
+      const d = new Date(iso);
+      expect(Number.isNaN(d.getTime())).toBe(false);
+      expect(d.getUTCFullYear()).toBe(2020);
+      expect(d.getUTCDate()).toBe(1);
+    });
+
+    test("parses numeric timestamp to ISO string", () => {
+      const iso = toISODate("1609459200000");
+      expect(iso).toBe("2021-01-01T00:00:00.000Z");
+    });
+
+    test("returns empty string for null/undefined", () => {
+      expect(toISODate(null)).toBe("");
+      expect(toISODate(undefined)).toBe("");
+    });
+
+    test("returns original string when parsing fails", () => {
+      const input = "not a date";
+      const iso = toISODate(input);
+      expect(iso).toBe(input);
+    });
+  });
   describe("parseStats", () => {
     test("should parse all stats correctly", () => {
       const html = `
