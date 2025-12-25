@@ -3,6 +3,7 @@ import * as cheerio from "cheerio";
 import {
   ENABLE_THOROUGH_HEALTH_CHECKS,
   HEALTH_CHECK_TIMEOUT_MS,
+  UNHEALTHY_INSTANCE_RETRY_PROBABILITY,
 } from "~/src/lib/constants";
 
 import type {
@@ -70,11 +71,12 @@ export class NitterInstancePool {
 
   getHealthyInstance(_sessionId?: string): string {
     const now = Date.now();
-    const healthyInstances = Array.from(this.instances.values()).filter(
-      (instance) => {
-        // Filter out unhealthy instances
-        if (instance.status === "unhealthy") return false;
 
+    const shouldRetryUnhealthy =
+      Math.random() < UNHEALTHY_INSTANCE_RETRY_PROBABILITY;
+
+    const candidateInstances = Array.from(this.instances.values()).filter(
+      (instance) => {
         // Filter out rate-limited instances that haven't cooled down
         if (
           instance.status === "rate_limited" &&
@@ -84,11 +86,16 @@ export class NitterInstancePool {
           return false;
         }
 
+        // Include unhealthy instances only probabilistically or when no healthy ones exist
+        if (instance.status === "unhealthy" && !shouldRetryUnhealthy) {
+          return false;
+        }
+
         return true;
       },
     );
 
-    if (healthyInstances.length === 0) {
+    if (candidateInstances.length === 0) {
       throw new Error(
         "No healthy Nitter instances available. All instances are down or rate-limited.",
       );
@@ -96,13 +103,20 @@ export class NitterInstancePool {
 
     // Round-robin selection
     const selectedInstance =
-      healthyInstances[this.currentIndex % healthyInstances.length];
+      candidateInstances[this.currentIndex % candidateInstances.length];
 
     if (!selectedInstance) {
       throw new Error("Failed to select instance");
     }
 
-    this.currentIndex = (this.currentIndex + 1) % healthyInstances.length;
+    this.currentIndex = (this.currentIndex + 1) % candidateInstances.length;
+
+    // Log if we're retrying an unhealthy instance
+    if (selectedInstance.status === "unhealthy") {
+      console.warn(
+        `[NitterPool] Retrying unhealthy instance ${selectedInstance.url} (${UNHEALTHY_INSTANCE_RETRY_PROBABILITY * 100}% chance)`,
+      );
+    }
 
     return selectedInstance.url;
   }

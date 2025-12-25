@@ -40,6 +40,9 @@ export const MAX_INSTANCE_RETRIES = Number(env.MAX_INSTANCE_RETRIES ?? 3);
 export const INSTANCE_RETRY_DELAY_MS = Number(
   env.INSTANCE_RETRY_DELAY_MS ?? 1000,
 );
+export const UNHEALTHY_INSTANCE_RETRY_PROBABILITY = Number(
+  env.UNHEALTHY_INSTANCE_RETRY_PROBABILITY ?? 0.15,
+);
 
 // Partial Results
 export const PARTIAL_RESULTS_MIN_THRESHOLD = Number(

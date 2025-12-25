@@ -5,6 +5,7 @@ A production-ready TypeScript service to scrape Twitter/X user profiles and twee
 ## ⚡ Features
 
 - **Multi-Instance Pool**: Automatic failover across 2 reliable Nitter instances (99.9% availability)
+- **Self-Healing**: Proactive instance recovery via probabilistic retry (15% chance)
 - **Browser Pooling**: Efficient resource usage with 5 browser workers
 - **Smart Rate Limiting**: 1.5 req/sec with 15-token burst capacity
 - **Automatic Retry**: Tries up to 3 instances before failing
@@ -264,6 +265,7 @@ HEALTH_CHECK_TIMEOUT_MS="8000"
 # Instance Management
 MAX_INSTANCE_RETRIES="3"  # Try 3 instances before failing
 INSTANCE_RETRY_DELAY_MS="1000"  # Delay between retries
+UNHEALTHY_INSTANCE_RETRY_PROBABILITY="0.15"  # 15% chance to retry unhealthy instances (self-healing)
 
 # Partial Results
 PARTIAL_RESULTS_MIN_THRESHOLD="0.2"  # 20% minimum for partial results
@@ -317,7 +319,7 @@ bun run examples/production-validation.ts
 ### Test Results
 
 ```
-✅ 82 unit tests passing
+✅ 88 unit tests passing
 ✅ 100% success rate on examples
 ✅ All validation tests passing
 ✅ All error handling tests passing
@@ -331,7 +333,8 @@ bun run examples/production-validation.ts
    - Manages 2 reliable Nitter instances
    - Automatic health checks every 5 minutes
    - Round-robin load distribution
-   - Failure detection & recovery
+   - Self-healing via probabilistic retry (15% chance to retry unhealthy instances)
+   - Failure detection & automatic recovery
 
 2. **Browser Pool**
    - 5 Puppeteer browser workers
@@ -399,10 +402,11 @@ watch -n 10 'curl -s http://localhost:1337/metrics | jq ".jobs"'
 
 ### "No healthy Nitter instances available"
 
-- Check `/health` endpoint
-- All instances might be temporarily down
-- Wait 5 minutes for automatic recovery
-- Or restart service to force immediate health check
+- Check `/health` endpoint to see instance statuses
+- Instances will auto-recover via probabilistic retry (15% chance per request)
+- Periodic health checks run every 5 minutes for full recovery
+- If issue persists, restart service to force immediate health check
+- Consider adjusting `UNHEALTHY_INSTANCE_RETRY_PROBABILITY` (0.15 = 15%) for faster/slower recovery
 
 ### "Request timed out" (206 Partial)
 
